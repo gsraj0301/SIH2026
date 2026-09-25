@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db{
+    provider = "postgresql"
+    url = env("DATABASE_URL")
+}
+
+model Patient{
+    id  String  @id @default(uuid())
+    name    String
+    age Int
+    gender  String
+    phone   String?
+    village String
+    createdAt   DateTime @default(now())
+
+    triageRecords   TriageRecord[]
+    appointments    Appointment[]
+    referrals   Referral[]
+    followUps   FollowUp[]
+}
+
+model AshaWorker{
+    id  String @id @default(uuid())
+    name    String
+    phone   String @unique
+    passwordHash    String 
+    village String 
+    createdAt   DateTime @default(now())
+
+    triageRecords TriageRecord[]
+    appointments    Appointment[]
+}
+
+model Doctor{
+    id  String @id @default(uuid())
+    name    String
+    specialty   String
+    facilityName    String
+    facilityType    String //PHC | CHC | District
+    available   Boolean @default(true)
+    createdAt   DateTime @default(now())
+
+    appointments    Appointment[]
+}
+
+// ============ CLINICAL RECORDS ============
+enum RiskLevel{
+    EMERGENCY
+    URGENT
+    ROUTINE
+    SELF_CARE
+}
+
+model TriageRecord{
+    id  String @id @default(uuid())
+    transcription   String @db.Text
+    symptoms    String[]
+    riskLevel   RiskLevel
+    synced  Boolean @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    patientId   String
+    ashaWorkerId    String
+
+    patient Patient @relation(fields: [patientId], references: [id])
+    ashaWorker  AshaWorker  @relation(fields: [ashaWorkerId], references:[id])
+}
+
+enum AppointmentStatus{
+    PENDING
+    CONFIRMED
+    COMPLETED
+    CANCELLED
+}
+
+model Appointment {
+    id           String            @id @default(uuid())
+    status       AppointmentStatus @default(PENDING)
+    scheduledFor DateTime
+    createdAt    DateTime          @default(now())
+    updatedAt    DateTime          @updatedAt
+
+    patientId   String
+    doctorId    String
+    ashaWorkerId String
+
+    patient    Patient    @relation(fields: [patientId], references: [id])
+    doctor     Doctor     @relation(fields: [doctorId], references: [id])
+    ashaWorker AshaWorker @relation(fields: [ashaWorkerId], references: [id])
+}
+
+enum ReferralStatus {
+    PENDING
+    COMPLETED
+}
+
+model Referral {
+    id           String         @id @default(uuid())
+    fromFacility String
+    toFacility   String
+    reason       String         @db.Text
+    status       ReferralStatus @default(PENDING)
+    createdAt    DateTime       @default(now())
+
+    patientId String
+    patient   Patient  @relation(fields: [patientId], references: [id])
+}
+
+enum FollowUpStatus {
+    PENDING
+    DONE
+}
+
+model FollowUp {
+    id        String         @id @default(uuid())
+    dueDate   DateTime
+    reason    String
+    status    FollowUpStatus @default(PENDING)
+    createdAt DateTime       @default(now())
+    
+    patientId String
+    patient   Patient  @relation(fields: [patientId], references: [id])
+}
